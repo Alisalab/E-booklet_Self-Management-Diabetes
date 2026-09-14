@@ -1,168 +1,525 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Booklet Self-Management Diabetes</title>
-    <style>
-        :root {
-            --primary: #008b8b;
-            --secondary: #8fa31e;
-            --bg: #f8f9fa;
-            --text: #212529;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Self Management Diabetes — E-Booklet</title>
 
-        * { box-sizing: border-box; }
+  <!-- PDF.js: renders the original PDF and keeps PDF hyperlink annotations usable. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
+  <!-- StPageFlip: flipbook/page-turning UI. -->
+  <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 0;
-        }
+  <style>
+    :root{
+      --primary:#0f766e;
+      --primary-dark:#115e59;
+      --bg:#eef7f6;
+      --panel:rgba(255,255,255,.94);
+      --text:#17332f;
+      --muted:#5f7772;
+      --shadow:0 16px 45px rgba(15,70,65,.18);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--text);background:var(--bg)}
+    button,a{font:inherit}
+    button{cursor:pointer}
 
-        header {
-            background-color: var(--primary);
-            color: white;
-            padding: 1.5rem 1rem;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+    .welcome{
+      position:fixed;inset:0;z-index:1000;
+      display:grid;place-items:center;
+      padding:24px;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(15,118,110,.16), transparent 35%),
+        radial-gradient(circle at 80% 80%, rgba(45,170,155,.14), transparent 35%),
+        var(--bg);
+    }
+    .welcome-card{
+      width:min(560px,100%);
+      background:var(--panel);
+      border-radius:28px;
+      padding:38px 28px;
+      text-align:center;
+      box-shadow:var(--shadow);
+      border:1px solid rgba(15,118,110,.12);
+    }
+    .welcome-badge{
+      display:inline-flex;padding:7px 13px;border-radius:999px;
+      background:#dff4f1;color:var(--primary-dark);font-weight:700;font-size:.84rem;
+    }
+    .welcome h1{margin:18px 0 10px;font-size:clamp(1.8rem,6vw,3rem);line-height:1.05}
+    .welcome p{margin:8px 0;color:var(--muted);line-height:1.55}
+    .start-btn{
+      margin-top:24px;border:0;border-radius:16px;padding:14px 25px;
+      background:var(--primary);color:#fff;font-weight:800;
+      box-shadow:0 10px 24px rgba(15,118,110,.25);
+    }
+    .start-btn:hover{background:var(--primary-dark)}
 
-        header h1 { margin: 0; font-size: 1.4rem; }
-        header p { margin: 0.3rem 0 0; font-size: 0.9rem; opacity: 0.9; }
+    .app{min-height:100vh;display:flex;flex-direction:column}
+    header{
+      position:sticky;top:0;z-index:50;
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:10px max(12px,env(safe-area-inset-left)) 10px max(12px,env(safe-area-inset-right));
+      background:rgba(255,255,255,.94);backdrop-filter:blur(12px);
+      border-bottom:1px solid rgba(0,0,0,.07);
+    }
+    .brand{min-width:0}
+    .brand strong{display:block;font-size:.94rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .brand span{display:block;font-size:.73rem;color:var(--muted)}
+    .tools{display:flex;gap:6px;align-items:center}
+    .icon-btn{
+      width:40px;height:40px;border:0;border-radius:12px;background:#edf7f5;color:var(--primary-dark);
+      display:grid;place-items:center;font-size:18px;
+    }
+    .icon-btn:hover{background:#dff1ee}
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 1rem;
-        }
+    .progress-wrap{height:4px;background:#d9eae7}
+    #progress{height:100%;width:0;background:var(--primary);transition:width .2s ease}
 
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.2rem;
-            margin-bottom: 1.2rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
+    main{flex:1;display:flex;flex-direction:column;align-items:center;padding:14px 10px 86px}
+    #book{
+      width:min(1180px,96vw);
+      height:min(78vh,780px);
+      min-height:420px;
+      position:relative;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+    .page{
+      background:#fff;
+      overflow:hidden;
+      position:relative;
+      box-shadow:0 4px 18px rgba(0,0,0,.10);
+    }
+    .page canvas{display:block;width:100%;height:100%}
+    .annotation-layer{
+      position:absolute;inset:0;z-index:5;pointer-events:none;
+    }
+    .pdf-link{
+      position:absolute;display:block;pointer-events:auto;
+      background:rgba(15,118,110,0);
+      border-radius:4px;
+      outline:none;
+    }
+    .pdf-link:hover,.pdf-link:focus{background:rgba(15,118,110,.13);outline:2px solid rgba(15,118,110,.35)}
+    .page-label{
+      position:absolute;bottom:6px;left:0;right:0;text-align:center;
+      color:rgba(0,0,0,.48);font-size:11px;z-index:10;pointer-events:none;
+    }
 
-        h2 {
-            color: var(--primary);
-            font-size: 1.2rem;
-            border-bottom: 2px solid var(--secondary);
-            padding-bottom: 0.4rem;
-            margin-top: 0;
-        }
+    .controls{
+      position:fixed;left:50%;bottom:max(12px,env(safe-area-inset-bottom));
+      transform:translateX(-50%);z-index:40;
+      display:flex;align-items:center;gap:8px;
+      padding:8px;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);
+      border:1px solid rgba(0,0,0,.08);border-radius:18px;box-shadow:0 10px 35px rgba(0,0,0,.15);
+    }
+    .nav-btn{
+      min-width:46px;height:42px;border:0;border-radius:12px;
+      background:#edf7f5;color:var(--primary-dark);font-weight:800;
+    }
+    .nav-btn:disabled{opacity:.38;cursor:not-allowed}
+    #pageInfo{min-width:92px;text-align:center;font-size:.82rem;font-weight:700;color:var(--muted)}
 
-        /* Container iframe responsif agar pas di layar HP */
-        .pdf-container {
-            position: relative;
-            width: 100%;
-            height: 75vh; /* Menggunakan 75% dari tinggi layar HP */
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #ddd;
-        }
+    .modal{
+      position:fixed;inset:0;z-index:100;
+      display:none;align-items:flex-end;justify-content:center;
+      background:rgba(8,31,28,.45);padding:10px;
+    }
+    .modal.open{display:flex}
+    .modal-card{
+      width:min(680px,100%);max-height:82vh;overflow:auto;
+      background:#fff;border-radius:22px;padding:18px;box-shadow:var(--shadow);
+    }
+    .modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+    .modal-head h2{font-size:1.1rem;margin:0}
+    .toc{display:grid;gap:6px}
+    .toc button{
+      width:100%;text-align:left;border:0;background:#f3f8f7;color:var(--text);
+      border-radius:11px;padding:10px 12px;
+    }
+    .toc button:hover{background:#e2f2ef}
+    .toc .section{font-weight:800;color:var(--primary-dark);background:#e8f5f3}
+    .close{border:0;background:#eef6f5;border-radius:10px;width:38px;height:38px}
 
-        .pdf-container iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
+    .questionnaire{
+      position:fixed;right:14px;bottom:82px;z-index:35;
+      border:0;border-radius:14px;padding:11px 14px;background:var(--primary);color:#fff;
+      font-weight:800;box-shadow:0 8px 24px rgba(15,118,110,.25);
+    }
+    .questionnaire:hover{background:var(--primary-dark)}
 
-        .btn-download {
-            display: block;
-            text-align: center;
-            background-color: var(--primary);
-            color: white;
-            padding: 0.8rem;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: bold;
-            margin-top: 1rem;
-            font-size: 0.95rem;
-        }
+    .hint{
+      margin-top:10px;color:var(--muted);font-size:.76rem;text-align:center;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1rem 0;
-            font-size: 0.9rem;
-        }
-
-        th, td {
-            border: 1px solid #dee2e6;
-            padding: 8px 10px;
-            text-align: left;
-        }
-
-        th { background-color: var(--primary); color: white; }
-
-        footer {
-            text-align: center;
-            padding: 1.5rem 1rem;
-            font-size: 0.8rem;
-            color: #6c757d;
-        }
-    </style>
+    @media(max-width:700px){
+      header{padding-top:max(8px,env(safe-area-inset-top))}
+      .brand strong{font-size:.84rem}
+      .brand span{font-size:.68rem}
+      .icon-btn{width:37px;height:37px}
+      main{padding:8px 4px 82px}
+      #book{width:98vw;height:72vh;min-height:380px}
+      .controls{bottom:max(8px,env(safe-area-inset-bottom));gap:5px;padding:6px;border-radius:15px}
+      .nav-btn{height:40px;min-width:42px}
+      #pageInfo{min-width:80px;font-size:.74rem}
+      .questionnaire{right:8px;bottom:75px;font-size:.75rem;padding:9px 11px}
+      .hint{display:none}
+    }
+  </style>
 </head>
-<body>
 
+<body>
+  <section class="welcome" id="welcome">
+    <div class="welcome-card">
+      <span class="welcome-badge">E-BOOKLET • 2026</span>
+      <h1>SELF MANAGEMENT DIABETES</h1>
+      <p><strong>Strategi peningkatan Self-management pasien Diabetes mellitus melalui peran keluarga.</strong></p>
+      <p>E-Booklet Alfi Elisa Sahidah</p>
+      <button class="start-btn" id="startBtn">Mulai Membaca</button>
+    </div>
+  </section>
+
+  <div class="app">
     <header>
-        <h1>SELF-MANAGEMENT DIABETES</h1>
-        <p>E-Booklet Edukasi Penderita Diabetes Melitus</p>
+      <div class="brand">
+        <strong>SELF MANAGEMENT DIABETES</strong>
+        <span>E-Booklet Alfi Elisa Sahidah • 2026</span>
+      </div>
+      <div class="tools">
+        <button class="icon-btn" id="tocBtn" title="Daftar Isi" aria-label="Buka daftar isi">☰</button>
+        <button class="icon-btn" id="zoomOut" title="Perkecil" aria-label="Perkecil">−</button>
+        <button class="icon-btn" id="zoomIn" title="Perbesar" aria-label="Perbesar">+</button>
+        <button class="icon-btn" id="fullscreenBtn" title="Layar penuh" aria-label="Layar penuh">⛶</button>
+      </div>
     </header>
 
-    <div class="container">
+    <div class="progress-wrap"><div id="progress"></div></div>
 
-        <!-- Modul Pembaca PDF di HP -->
-        <section class="card">
-            <h2>📱 Baca Booklet Langsung</h2>
-            <p style="font-size:0.85rem; color:#666;">Geser/scroll ke bawah di dalam kotak untuk membaca halaman berikutnya:</p>
-            
-            <div class="pdf-container">
-                <!-- Ganti URL_WEB_PDF_ANDA dengan link PDF publik Anda (misal link Google Drive publik atau link GitHub Pages) -->
-                <iframe src="https://docs.google.com/viewer?url=URL_WEB_PDF_ANDA&embedded=true"></iframe>
-            </div>
+    <main>
+      <div id="book" aria-label="Flipbook e-booklet"></div>
+      <div class="hint">Geser kiri/kanan pada layar atau gunakan tombol navigasi.</div>
+    </main>
 
-            <!-- Opsional jika responden tetap ingin menyimpan file -->
-            <a href="URL_WEB_PDF_ANDA" download class="btn-download">📥 Simpan File PDF (Opsional)</a>
-        </section>
+    <!-- Isi URL kuesioner penelitian di QUESTIONNAIRE_URL pada script di bawah. -->
+    <button class="questionnaire" id="questionnaireBtn" style="display:none">Kembali ke Kuesioner</button>
 
-        <!-- Rangkuman Singkat -->
-        <section class="card">
-            <h2>💡 Poin Ringkas Edukasi</h2>
-            <p><strong>Prinsip Diet 3J:</strong></p>
-            <ul>
-                <li><strong>Jumlah:</strong> Porsi makan sesuai kebutuhan kalori.</li>
-                <li><strong>Jadwal:</strong> Makan teratur 3x sehari + 3x selingan.</li>
-                <li><strong>Jenis:</strong> Tinggi serat, rendah gula & lemak jenuh.</li>
-            </ul>
-
-            <p><strong>Target Gula Darah:</strong></p>
-            <table>
-                <tr>
-                    <th>Waktu</th>
-                    <th>Target</th>
-                </tr>
-                <tr>
-                    <td>Sebelum Makan</td>
-                    <td>80 - 130 mg/dL</td>
-                </tr>
-                <tr>
-                    <td>2 Jam Setelah Makan</td>
-                    <td>&lt; 180 mg/dL</td>
-                </tr>
-            </table>
-        </section>
-
+    <div class="controls">
+      <button class="nav-btn" id="prevBtn" aria-label="Halaman sebelumnya">‹</button>
+      <div id="pageInfo">Halaman 1 dari 26</div>
+      <button class="nav-btn" id="nextBtn" aria-label="Halaman berikutnya">›</button>
     </div>
+  </div>
 
-    <footer>
-        &copy; 2026 Alfi Elisa Sahidah & Eko Budi Santoso<br>
-        Institut Kesehatan dan Bisnis Surabaya
-    </footer>
+  <div class="modal" id="tocModal" role="dialog" aria-modal="true" aria-label="Daftar isi">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Daftar Isi</h2>
+        <button class="close" id="closeToc" aria-label="Tutup daftar isi">✕</button>
+      </div>
+      <div class="toc" id="toc"></div>
+    </div>
+  </div>
 
+<script type="module">
+  const QUESTIONNAIRE_URL = ""; 
+  // Contoh:
+  // const QUESTIONNAIRE_URL = "https://forms.gle/XXXXXXXXXXXX";
+
+  const PDF_URL = "./booklet.pdf";
+  const TOTAL_PAGES = 26;
+
+  const tocItems = [
+    ["Kata Pengantar",3],
+    ["Pendahuluan",6],
+    ["1.1 Latar Belakang",7],
+    ["Diabetes Melitus",8],
+    ["2.1 Definisi",9],
+    ["2.2 Etiologi / Penyebab",10],
+    ["2.3 Gejala",10],
+    ["2.4 Faktor Risiko",11],
+    ["2.5 Komplikasi",11],
+    ["2.6 Klasifikasi",12],
+    ["Self-Management Diabetes",13],
+    ["3.1 Definisi",14],
+    ["3.2 Point Self-Management",14],
+    ["3.2.1 Diet Sehat",14],
+    ["3.2.2 Aktivitas Fisik",16],
+    ["3.2.3 Kepatuhan Minum Obat",17],
+    ["3.2.4 Monitoring Gula Darah",17],
+    ["3.2.5 Perawatan Kaki",18],
+    ["Peran Keluarga",19],
+    ["4.1 Definisi",20],
+    ["4.2 Tujuan",20],
+    ["4.3 Dukungan Emosional",20],
+    ["4.4 Bentuk Peran Keluarga",21],
+    ["4.5 Hambatan",22],
+    ["Penutup",23],
+    ["5.1 Kesimpulan",24],
+    ["5.2 Saran",24],
+    ["Daftar Pustaka",25]
+  ];
+
+  const sectionPages = new Set([6,8,13,19,23]);
+
+  const welcome = document.getElementById("welcome");
+  const bookEl = document.getElementById("book");
+  const pageInfo = document.getElementById("pageInfo");
+  const progress = document.getElementById("progress");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const tocModal = document.getElementById("tocModal");
+  const toc = document.getElementById("toc");
+
+  // PDF.js is loaded as an ES module.
+  const pdfjsLib = await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs");
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+
+  let pdfDoc = null;
+  let flipbook = null;
+  let currentPage = 1;
+  let zoom = 1;
+  const renderedPages = [];
+
+  function buildToc(){
+    toc.innerHTML = "";
+    tocItems.forEach(([label,page]) => {
+      const b = document.createElement("button");
+      b.textContent = `${label}  —  ${page}`;
+      if(sectionPages.has(page)) b.classList.add("section");
+      b.addEventListener("click", () => {
+        goToPage(page);
+        tocModal.classList.remove("open");
+      });
+      toc.appendChild(b);
+    });
+  }
+
+  function normalizeUrl(url){
+    try { return new URL(url, window.location.href).href; }
+    catch { return null; }
+  }
+
+  async function renderPage(pdfPage, pageNumber){
+    const viewport = pdfPage.getViewport({scale: 1});
+    const page = document.createElement("div");
+    page.className = "page";
+    page.dataset.page = pageNumber;
+    page.setAttribute("aria-label", `Halaman ${pageNumber}`);
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", {alpha:false});
+
+    // Render at a reasonable DPR for mobile clarity without making the file too heavy.
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const renderScale = 1.45 * dpr;
+    const renderViewport = pdfPage.getViewport({scale: renderScale});
+    canvas.width = Math.ceil(renderViewport.width);
+    canvas.height = Math.ceil(renderViewport.height);
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    page.appendChild(canvas);
+
+    await pdfPage.render({canvasContext:ctx, viewport:renderViewport}).promise;
+
+    const annotationLayer = document.createElement("div");
+    annotationLayer.className = "annotation-layer";
+    page.appendChild(annotationLayer);
+
+    const annotations = await pdfPage.getAnnotations({intent:"display"});
+    const baseViewport = pdfPage.getViewport({scale:1});
+
+    for(const ann of annotations){
+      if(!ann.rect) continue;
+      const [x1,y1,x2,y2] = ann.rect;
+      const left = (Math.min(x1,x2)/baseViewport.width)*100;
+      const width = (Math.abs(x2-x1)/baseViewport.width)*100;
+      const top = ((baseViewport.height-Math.max(y1,y2))/baseViewport.height)*100;
+      const height = (Math.abs(y2-y1)/baseViewport.height)*100;
+
+      if(ann.subtype === "Link"){
+        const a = document.createElement("a");
+        a.className = "pdf-link";
+        a.style.left = `${left}%`;
+        a.style.top = `${top}%`;
+        a.style.width = `${width}%`;
+        a.style.height = `${height}%`;
+        a.setAttribute("aria-label", "Tautan pada booklet");
+
+        if(ann.url){
+          const href = normalizeUrl(ann.url);
+          if(href){
+            a.href = href;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+          }
+        } else if(ann.dest){
+          a.href = "#";
+          a.addEventListener("click", async e => {
+            e.preventDefault();
+            const dest = await pdfDoc.getDestination(ann.dest);
+            if(dest && dest[0]){
+              const ref = dest[0];
+              let target = null;
+              for(let i=1;i<=pdfDoc.numPages;i++){
+                const p = await pdfDoc.getPage(i);
+                if(p.ref && ref.num === p.ref.num && ref.gen === p.ref.gen){target=i;break;}
+              }
+              if(target) goToPage(target);
+            }
+          });
+        }
+        annotationLayer.appendChild(a);
+      }
+    }
+
+    const label = document.createElement("div");
+    label.className = "page-label";
+    label.textContent = `${pageNumber} / ${TOTAL_PAGES}`;
+    page.appendChild(label);
+
+    return page;
+  }
+
+  async function createBook(){
+    pdfDoc = await pdfjsLib.getDocument(PDF_URL).promise;
+
+    if(pdfDoc.numPages !== TOTAL_PAGES){
+      console.warn(`PDF memiliki ${pdfDoc.numPages} halaman; konfigurasi mengharapkan ${TOTAL_PAGES}.`);
+    }
+
+    const n = pdfDoc.numPages;
+    for(let i=1;i<=n;i++){
+      const pdfPage = await pdfDoc.getPage(i);
+      const el = await renderPage(pdfPage,i);
+      renderedPages.push(el);
+      bookEl.appendChild(el);
+    }
+
+    flipbook = new St.PageFlip(bookEl, {
+      width: 500,
+      height: 700,
+      size: "stretch",
+      minWidth: 280,
+      maxWidth: 900,
+      minHeight: 360,
+      maxHeight: 1200,
+      maxShadowOpacity: .25,
+      showCover: true,
+      mobileScrollSupport: true,
+      useMouseEvents: true,
+      swipeDistance: 20,
+      clickEventForward: false,
+      flippingTime: 600,
+      drawShadow: true
+    });
+
+    flipbook.loadFromHTML(renderedPages);
+
+    flipbook.on("flip", e => {
+      currentPage = e.data + 1;
+      updateUI();
+      localStorage.setItem("ebooklet-last-page", String(currentPage));
+      history.replaceState(null,"",`#page-${currentPage}`);
+    });
+
+    updateUI();
+  }
+
+  function updateUI(){
+    const total = pdfDoc?.numPages || TOTAL_PAGES;
+    currentPage = Math.max(1, Math.min(currentPage,total));
+    pageInfo.textContent = `Halaman ${currentPage} dari ${total}`;
+    progress.style.width = `${(currentPage/total)*100}%`;
+    prevBtn.disabled = currentPage <= 1;
+    nextBtn.disabled = currentPage >= total;
+  }
+
+  function goToPage(page){
+    page = Math.max(1, Math.min(page, pdfDoc?.numPages || TOTAL_PAGES));
+    currentPage = page;
+    if(flipbook){
+      flipbook.turnToPage(page-1);
+      updateUI();
+      localStorage.setItem("ebooklet-last-page", String(page));
+      history.replaceState(null,"",`#page-${page}`);
+    }
+  }
+
+  prevBtn.addEventListener("click", () => {
+    if(flipbook) flipbook.flipPrev();
+  });
+  nextBtn.addEventListener("click", () => {
+    if(flipbook) flipbook.flipNext();
+  });
+
+  document.getElementById("tocBtn").addEventListener("click",()=>tocModal.classList.add("open"));
+  document.getElementById("closeToc").addEventListener("click",()=>tocModal.classList.remove("open"));
+  tocModal.addEventListener("click",e=>{if(e.target===tocModal)tocModal.classList.remove("open")});
+
+  document.getElementById("fullscreenBtn").addEventListener("click",()=>{
+    if(!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  });
+
+  // Zoom changes the flipbook dimensions while preserving the page-turn UI.
+  document.getElementById("zoomIn").addEventListener("click",()=>{
+    zoom = Math.min(1.25, zoom + .1);
+    bookEl.style.transform = `scale(${zoom})`;
+    bookEl.style.transformOrigin = "center center";
+  });
+  document.getElementById("zoomOut").addEventListener("click",()=>{
+    zoom = Math.max(.85, zoom - .1);
+    bookEl.style.transform = `scale(${zoom})`;
+    bookEl.style.transformOrigin = "center center";
+  });
+
+  document.getElementById("questionnaireBtn").addEventListener("click",()=>{
+    if(QUESTIONNAIRE_URL) window.open(QUESTIONNAIRE_URL,"_blank","noopener,noreferrer");
+  });
+
+  if(QUESTIONNAIRE_URL){
+    const q = document.getElementById("questionnaireBtn");
+    q.style.display = "block";
+  }
+
+  document.getElementById("startBtn").addEventListener("click", async ()=>{
+    welcome.style.display = "none";
+    await ensureBook();
+    restoreStartPage();
+  });
+
+  window.addEventListener("keydown",e=>{
+    if(e.key==="ArrowRight" || e.key==="PageDown") flipbook?.flipNext();
+    if(e.key==="ArrowLeft" || e.key==="PageUp") flipbook?.flipPrev();
+    if(e.key==="Escape") tocModal.classList.remove("open");
+  });
+
+  function restoreStartPage(){
+    const hash = location.hash.match(/page-(\d+)/);
+    const saved = Number(localStorage.getItem("ebooklet-last-page") || 1);
+    const target = hash ? Number(hash[1]) : saved;
+    if(target>1) setTimeout(()=>goToPage(target),250);
+  }
+
+  let bookPromise = null;
+  async function ensureBook(){
+    if(!bookPromise) bookPromise = createBook();
+    return bookPromise;
+  }
+
+  buildToc();
+
+  // Allow direct links such as index.html#page-7.
+  if(location.hash.startsWith("#page-")){
+    welcome.style.display = "none";
+    await ensureBook();
+    restoreStartPage();
+  }
+</script>
 </body>
 </html>
